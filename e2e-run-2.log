@@ -1,0 +1,56 @@
+﻿Starting e2e booking flow...
+[DEBUG] GatewayUrl=http://localhost:4000 UserServiceUrl=http://localhost:5001 BookingServiceUrl=http://localhost:5003 PaymentServiceUrl=http://localhost:5004 NotificationServiceUrl=http://localhost:5005
+[STEP 1] Wait for gateway health
+[DEBUG] HTTP GET http://localhost:4000/api/v1/health (attempt 1/1)
+[STEP 2] Wait for user service health
+[DEBUG] HTTP GET http://localhost:5001/health (attempt 1/1)
+[STEP 3] Wait for booking service health
+[DEBUG] HTTP GET http://localhost:5003/health (attempt 1/1)
+[STEP 4] Wait for payment service health
+[DEBUG] HTTP GET http://localhost:5004/health (attempt 1/1)
+[STEP 5] Wait for notification service health
+[DEBUG] HTTP GET http://localhost:5005/health (attempt 1/1)
+[STEP 6] Create user via signup
+[DEBUG] HTTP POST http://localhost:4000/api/v1/auth/signup (attempt 1/5)
+[DEBUG] Signup succeeded for email=e2e_1774517529742@example.com
+[STEP 7] Fetch showtimes
+[DEBUG] HTTP GET http://localhost:4000/api/v1/catalog/showtimes?from=2026-03-26T08%3A32%3A10.0785681Z&to=2026-03-27T09%3A32%3A10.0894882Z (attempt 1/10)
+Using showtime: 69c4c296237dd3e69cf3a733
+[STEP 8] Fetch seat layout
+[DEBUG] HTTP GET http://localhost:4000/api/v1/catalog/showtimes/69c4c296237dd3e69cf3a733/seats (attempt 1/5)
+[DEBUG] Candidate seats found: 50
+[STEP 9] Verify booking service readiness
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/6)
+[STEP 10] Lock seats
+[DEBUG] HTTP POST http://localhost:4000/api/v1/bookings/locks (attempt 1/1)
+Selected seats: A1, A2
+Seats lock response: Seats locked
+[STEP 11] Create booking
+[DEBUG] HTTP POST http://localhost:4000/api/v1/bookings (attempt 1/5)
+Created booking: 610526e1-b4d1-4275-bc1a-de6735d5ea36
+[STEP 12] Create payment intent
+[DEBUG] HTTP POST http://localhost:4000/api/v1/payments/intents (attempt 1/5)
+Created payment intent: b626acca-7826-400a-aa6b-6ce29c6895d0
+[STEP 13] Send payment success webhook
+[DEBUG] HTTP POST http://localhost:5004/payments/webhook (attempt 1/5)
+Payment webhook success sent
+[STEP 14] Wait for booking confirmation
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+Booking confirmed by saga
+[STEP 15] Request booking cancellation
+[DEBUG] HTTP POST http://localhost:4000/api/v1/bookings/610526e1-b4d1-4275-bc1a-de6735d5ea36/cancel (attempt 1/5)
+Cancel response received
+[STEP 16] Wait for booking cancelled status
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+[DEBUG] HTTP GET http://localhost:4000/api/v1/bookings/me (attempt 1/1)
+Booking cancelled after refund saga
+[STEP 17] Validate notification logs
+[DEBUG] HTTP GET http://localhost:4000/api/v1/notifications/logs (attempt 1/1)
+[DEBUG] HTTP GET http://localhost:4000/api/v1/notifications/logs (attempt 1/1)
+E2E flow passed successfully
+Booking ID: 610526e1-b4d1-4275-bc1a-de6735d5ea36
+Payment ID: b626acca-7826-400a-aa6b-6ce29c6895d0
+E2E_EXIT:0

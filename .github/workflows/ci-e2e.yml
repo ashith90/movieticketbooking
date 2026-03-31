@@ -1,0 +1,116 @@
+name: CI E2E
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Wait for core health
+        shell: bash
+        run: |
+          set -e
+          for i in {1..60}; do
+            if curl -fsS http://localhost:4000/api/v1/health >/dev/null; then
+              echo "Gateway is healthy"
+              exit 0
+            fi
+            echo "Waiting for services... ($i/60)"
+            sleep 5
+          done
+          echo "Services did not become healthy in time"
+          docker compose logs
+          exit 1
+
+      - name: Seed movie catalog
+        run: docker compose exec -T movie-service npm run seed
+
+      - name: Capture showtime ID
+        id: showtime
+        shell: bash
+        run: |
+          set -e
+          SHOWTIME_ID=$(docker compose exec -T movie-service sh -c "node -e \"(async()=>{const m=require('mongoose');const {Showtime}=require('./src/models/Catalog');await m.connect(process.env.MONGO_URI,{dbName:process.env.MONGO_DB});const s=await Showtime.findOne().sort({createdAt:1});console.log(s?String(s._id):'');await m.disconnect();})().catch(async(e)=>{console.error(e);process.exit(1);});\"")
+          SHOWTIME_ID=$(echo "$SHOWTIME_ID" | tr -d '\r' | tail -n1)
+          if [ -z "$SHOWTIME_ID" ]; then
+            echo "No showtime found"
+            docker compose logs movie-service
+            exit 1
+          fi
+          echo "showtime_id=$SHOWTIME_ID" >> $GITHUB_OUTPUT
+          echo "Using showtime: $SHOWTIME_ID"
+
+      - name: Seed booking seat inventory
+        run: docker compose exec -T booking-service sh -c "SHOWTIME_ID=${{ steps.showtime.outputs.showtime_id }} npm run seed:seats"
+
+      - name: Run e2e flow script (3 consecutive runs)
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 3; $i++) {
+            Write-Host "=== E2E RUN $i ==="
+            ./scripts/e2e-flow.ps1 `
+              -GatewayUrl http://localhost:4000 `
+              -PaymentServiceUrl http://localhost:5004 `
+              -LogPath "./e2e-debug-run-$i.log"
+          }
+
+      - name: Validate E2E exit markers
+        shell: bash
+        run: |
+          set -e
+          for i in 1 2 3; do
+            log_file="e2e-debug-run-$i.log"
+            if [ ! -f "$log_file" ]; then
+              echo "$log_file was not generated"
+              exit 1
+            fi
+            if ! grep -q "E2E_EXIT:0" "$log_file"; then
+              echo "Missing E2E_EXIT:0 marker in $log_file"
+              tail -n 120 "$log_file" || true
+              exit 1
+            fi
+            echo "$log_file validated"
+          done
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p diagnostics
+          docker compose ps > diagnostics/compose-ps.txt
+          docker compose logs > diagnostics/compose-logs.txt
+
+          cp e2e-debug-run-*.log diagnostics/ 2>/dev/null || true
+
+          curl -sS http://localhost:4000/api/v1/health > diagnostics/gateway-health.json || true
+          curl -sS http://localhost:5001/health > diagnostics/user-health.json || true
+          curl -sS http://localhost:5002/health > diagnostics/movie-health.json || true
+          curl -sS http://localhost:5003/health > diagnostics/booking-health.json || true
+          curl -sS http://localhost:5004/health > diagnostics/payment-health.json || true
+          curl -sS http://localhost:5005/health > diagnostics/notification-health.json || true
+          curl -sS "http://localhost:4000/api/v1/catalog/showtimes" > diagnostics/catalog-showtimes.json || true
+
+      - name: Upload diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-e2e-diagnostics
+          path: diagnostics
+          if-no-files-found: ignore
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v

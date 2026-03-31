@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cinema Pulse - Movie Tickets Online</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Bricolage+Grotesque:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-initial-page="home">
+    <div class="backdrop"></div>
+    <main class="shell">
+      <!-- Navigation Header -->
+      <header class="navbar">
+        <div class="nav-container">
+          <div class="logo-section">
+            <h1 class="brand-logo">🎬 Cinema Pulse</h1>
+            <p class="brand-tagline">Your Entertainment Gateway</p>
+          </div>
+          
+          <nav class="main-nav">
+            <a class="nav-link page-link is-active" data-page="home" href="/">Home</a>
+            <a class="nav-link page-link" data-page="catalog" href="/catalog">Movies</a>
+            <a class="nav-link page-link" data-page="bookings" href="/bookings">My Bookings</a>
+            <a class="nav-link page-link" data-page="notifications" href="/notifications">Inbox</a>
+            <a class="nav-link page-link" data-page="admin" href="/admin">Admin</a>
+          </nav>
+
+          <div class="user-actions">
+            <span id="user-info" class="user-info">Guest</span>
+            <button id="logout" class="btn btn-logout" type="button">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- HOME PAGE -->
+      <section class="page is-active" id="page-home">
+        <!-- Hero Section -->
+        <div class="hero-banner">
+          <div class="hero-noise"></div>
+          <div class="hero-content">
+            <p class="hero-kicker">Live Ticketing</p>
+            <h2>Book Blockbusters In Seconds</h2>
+            <p>Discover fresh releases, prime evening slots, and weekend crowd favorites across cities.</p>
+            <div class="hero-search-bar">
+              <input type="text" id="home-search" class="search-input" placeholder="Search movies, genres, theaters..." />
+              <button id="home-search-btn" class="btn btn-search" type="button">Explore</button>
+            </div>
+            <div class="hero-pills">
+              <span>Fast Checkout</span>
+              <span>Smart Seat Picks</span>
+              <span>Realtime Confirmations</span>
+            </div>
+          </div>
+          <div class="hero-orbits" aria-hidden="true">
+            <span class="orbit orbit-a"></span>
+            <span class="orbit orbit-b"></span>
+            <span class="orbit orbit-c"></span>
+          </div>
+        </div>
+
+        <!-- Filter Options -->
+        <div class="filter-section authed-only" hidden>
+          <div class="filter-container">
+            <div class="filter-group">
+              <label>Genre:</label>
+              <select id="home-genre-filter">
+                <option value="">All Genres</option>
+                <option value="Action">Action</option>
+                <option value="Drama">Drama</option>
+                <option value="Comedy">Comedy</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Language:</label>
+              <select id="home-language-filter">
+                <option value="">All Languages</option>
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+              </select>
+            </div>
+            <button id="home-reset-filters" class="btn btn-secondary" type="button">Reset</button>
+          </div>
+        </div>
+
+        <section class="section-container authed-only" hidden>
+          <div class="home-insights">
+            <div class="insight-card">
+              <p>My Total Bookings</p>
+              <strong id="home-total-bookings">0</strong>
+            </div>
+            <div class="insight-card">
+              <p>Confirmation Rate</p>
+              <strong id="home-confirmed-rate">0%</strong>
+            </div>
+            <div class="insight-card">
+              <p>Latest Notifications</p>
+              <strong id="home-total-notifications">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Now Showing Section -->
+        <section class="section-container authed-only" hidden>
+          <h2 class="section-title">Now Showing</h2>
+          <div id="home-movies-grid" class="movies-grid">
+            <!-- Movies loaded via JavaScript -->
+          </div>
+        </section>
+
+        <!-- Quick Action Cards -->
+        <section class="section-container authed-only" hidden>
+          <div class="quick-actions">
+            <div class="action-card" data-page-target="catalog" role="button" tabindex="0">
+              <div class="action-icon">🎬</div>
+              <h3>Browse Movies</h3>
+              <p>View all available movies and showtimes</p>
+            </div>
+            <div class="action-card" data-page-target="bookings" role="button" tabindex="0">
+              <div class="action-icon">🎟️</div>
+              <h3>My Bookings</h3>
+              <p>Check your booking status and history</p>
+            </div>
+            <div class="action-card" data-page-target="notifications" role="button" tabindex="0">
+              <div class="action-icon">🔔</div>
+              <h3>Notifications</h3>
+              <p>Stay updated with booking confirmations</p>
+            </div>
+            <div class="action-card admin-only" data-page-target="admin" role="button" tabindex="0" hidden>
+              <div class="action-icon">🛠️</div>
+              <h3>Admin Panel</h3>
+              <p>View system health and operational metrics</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Guest Message -->
+        <section class="guest-message authed-only-hidden" hidden>
+          <div class="guest-card">
+            <h2>Welcome to Cinema Pulse</h2>
+            <p>Sign in to start booking your favorite movies</p>
+            <button id="guest-auth-btn" class="btn btn-primary" type="button">Sign In / Sign Up</button>
+          </div>
+        </section>
+      </section>
+
+      <!-- AUTH PAGE -->
+      <section class="page" id="page-auth">
+        <section class="card auth" id="auth-card">
+          <div class="card-head">
+            <h2>Welcome Back!</h2>
+            <p id="auth-note">Sign in to book your favorite movies</p>
+          </div>
+
+          <div class="tabs">
+            <button id="tab-login" class="tab is-active" type="button">Sign In</button>
+            <button id="tab-signup" class="tab" type="button">Create Account</button>
+          </div>
+
+          <form id="login-form" class="form is-active">
+            <label>Email</label>
+            <input id="login-email" type="email" placeholder="you@example.com" required />
+            <p id="login-email-error" class="field-error" aria-live="polite"></p>
+            <label>Password</label>
+            <input id="login-password" type="password" placeholder="Minimum 6 characters" required />
+            <p id="login-password-error" class="field-error" aria-live="polite"></p>
+            <button class="btn primary" type="submit">Sign In</button>
+          </form>
+
+          <form id="signup-form" class="form">
+            <label>Full Name</label>
+            <input id="signup-name" type="text" placeholder="Your full name" required />
+            <p id="signup-name-error" class="field-error" aria-live="polite"></p>
+            <label>Email</label>
+            <input id="signup-email" type="email" placeholder="you@example.com" required />
+            <p id="signup-email-error" class="field-error" aria-live="polite"></p>
+            <label>Password</label>
+            <input id="signup-password" type="password" placeholder="Create password (min 6 chars)" required />
+            <p id="signup-password-error" class="field-error" aria-live="polite"></p>
+            <button class="btn primary" type="submit">Create Account</button>
+          </form>
+
+          <div class="auth-demo-tools">
+            <p>Quick Demo Access</p>
+            <div class="auth-demo-actions">
+              <button id="demo-user-login" class="btn ghost" type="button">Use Demo User</button>
+              <button id="demo-admin-login" class="btn ghost" type="button">Use Demo Admin</button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- CATALOG PAGE -->
+      <section class="page" id="page-catalog">
+        <section class="grid-two authed-only" id="catalog-grid" hidden>
+          <article class="card">
+            <div class="card-head">
+              <h2>Available Showtimes</h2>
+              <p>Select a showtime to view seats</p>
+            </div>
+            <div class="filter-grid">
+              <label>
+                From
+                <input id="filter-from" type="datetime-local" />
+              </label>
+              <label>
+                To
+                <input id="filter-to" type="datetime-local" />
+              </label>
+            </div>
+            <div class="preset-row">
+              <button class="tab filter-preset" data-preset="today" type="button">Today</button>
+              <button class="tab filter-preset" data-preset="tonight" type="button">Tonight</button>
+              <button class="tab filter-preset" data-preset="tomorrow" type="button">Tomorrow</button>
+              <button class="tab filter-preset" data-preset="weekend" type="button">Weekend</button>
+              <button class="tab filter-preset" data-preset="upcoming" type="button">Upcoming</button>
+              <button class="tab filter-preset" data-preset="latest" type="button">Latest</button>
+            </div>
+            <div class="inline-tools left">
+              <button id="apply-filters" class="btn ghost" type="button">Apply</button>
+              <button id="reset-filters" class="btn ghost" type="button">Reset</button>
+            </div>
+            <div id="showtimes" class="list"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <h2>Select Seats</h2>
+              <p id="seat-meta">Pick up to 6 seats</p>
+            </div>
+            <div id="selection-summary" class="selection-summary">Select a showtime and seats to view booking details</div>
+            <div class="inline-tools left">
+              <button id="clear-seat-selection" class="btn ghost" type="button">Clear Selection</button>
+            </div>
+            <div id="seats" class="seats"></div>
+            <div class="seat-legend">
+              <span><i class="legend-dot available"></i> Available</span>
+              <span><i class="legend-dot selected"></i> Selected</span>
+            </div>
+            <div class="payment-sim">
+              <p class="mini">Payment Simulation</p>
+              <div class="sim-options">
+                <label><input type="radio" name="payment-outcome" value="SUCCEEDED" checked /> Success</label>
+                <label><input type="radio" name="payment-outcome" value="FAILED" /> Failure</label>
+              </div>
+            </div>
+            <div class="seat-actions">
+              <button id="run-booking" class="btn primary" type="button">Proceed to Booking</button>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <!-- BOOKINGS PAGE -->
+      <section class="page" id="page-bookings">
+        <section class="authed-only" hidden>
+          <article class="card">
+            <div class="card-head">
+              <h2>My Bookings</h2>
+              <p>View and manage your bookings</p>
+            </div>
+            <div class="inline-tools">
+              <label class="switch" for="auto-refresh-toggle">
+                <input id="auto-refresh-toggle" type="checkbox" />
+                <span>Auto-refresh</span>
+              </label>
+            </div>
+            <div class="kpi-grid" id="booking-kpis">
+              <div class="kpi-card kpi-total">
+                <p>Total Bookings</p>
+                <strong id="kpi-total">0</strong>
+              </div>
+              <div class="kpi-card kpi-confirmed">
+                <p>Confirmed</p>
+                <strong id="kpi-confirmed">0</strong>
+              </div>
+              <div class="kpi-card kpi-cancelled">
+                <p>Cancelled</p>
+                <strong id="kpi-cancelled">0</strong>
+              </div>
+              <div class="kpi-card kpi-pending">
+                <p>Pending</p>
+                <strong id="kpi-pending">0</strong>
+              </div>
+            </div>
+            <div class="filter-grid compact one-col">
+              <label>
+                Filter by Status
+                <select id="booking-status-filter">
+                  <option value="ALL">All Bookings</option>
+                  <option value="PENDING_PAYMENT">Pending Payment</option>
+                  <option value="CONFIRMED">Confirmed</option>
+                  <option value="CANCEL_REQUESTED">Cancel Requested</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </label>
+            </div>
+            <div id="bookings" class="list"></div>
+          </article>
+        </section>
+      </section>
+
+      <!-- NOTIFICATIONS PAGE -->
+      <section class="page" id="page-notifications">
+        <section class="authed-only" hidden>
+          <article class="card">
+            <div class="card-head">
+              <h2>Notifications</h2>
+              <p>Your booking and payment updates</p>
+            </div>
+            <div id="notifications" class="list"></div>
+          </article>
+        </section>
+      </section>
+
+      <!-- ADMIN PAGE -->
+      <section class="page" id="page-admin">
+        <section class="authed-only" hidden>
+          <article class="card">
+            <div class="card-head">
+              <h2>Admin Control Center</h2>
+              <p>Monitor service health, traffic indicators, and latest activity.</p>
+            </div>
+
+            <div class="inline-tools left">
+              <button id="admin-refresh" class="btn ghost" type="button">Refresh Dashboard</button>
+            </div>
+
+            <div class="admin-kpi-grid">
+              <div class="admin-kpi-card">
+                <p>Total Bookings</p>
+                <strong id="admin-total-bookings">0</strong>
+              </div>
+              <div class="admin-kpi-card">
+                <p>Notifications</p>
+                <strong id="admin-total-notifications">0</strong>
+              </div>
+              <div class="admin-kpi-card">
+                <p>Live Showtimes</p>
+                <strong id="admin-total-showtimes">0</strong>
+              </div>
+              <div class="admin-kpi-card">
+                <p>Healthy Services</p>
+                <strong id="admin-healthy-services">0/6</strong>
+              </div>
+            </div>
+
+            <h3 class="admin-section-title">Service Health</h3>
+            <div id="admin-service-health" class="admin-service-grid"></div>
+
+            <h3 class="admin-section-title admin-only" hidden>Edit Details</h3>
+            <form id="admin-edit-form" class="admin-edit-form admin-only" hidden>
+              <div class="admin-edit-grid">
+                <label>
+                  Email
+                  <input id="admin-email" type="email" readonly />
+                </label>
+                <label>
+                  Role
+                  <input id="admin-role" type="text" readonly />
+                </label>
+                <label>
+                  Name
+                  <input id="admin-name" type="text" required />
+                </label>
+                <label>
+                  City
+                  <input id="admin-city" type="text" />
+                </label>
+                <label>
+                  Phone
+                  <input id="admin-phone" type="text" />
+                </label>
+              </div>
+              <button id="admin-save-profile" class="btn primary" type="submit">Save Details</button>
+            </form>
+
+            <h3 class="admin-section-title admin-only" hidden>Manage Movies</h3>
+            <form id="admin-movie-form" class="admin-edit-form admin-only" hidden>
+              <input id="admin-movie-id" type="hidden" />
+              <div class="admin-edit-grid admin-movie-grid">
+                <label>
+                  Title
+                  <input id="admin-movie-title" type="text" required />
+                </label>
+                <label>
+                  Duration (min)
+                  <input id="admin-movie-duration" type="number" min="1" />
+                </label>
+                <label>
+                  Language
+                  <input id="admin-movie-language" type="text" />
+                </label>
+                <label>
+                  Genre
+                  <input id="admin-movie-genre" type="text" />
+                </label>
+                <label>
+                  Rating
+                  <input id="admin-movie-rating" type="text" placeholder="U/A" />
+                </label>
+              </div>
+              <div class="admin-form-actions">
+                <button id="admin-save-movie" class="btn primary" type="submit">Save Movie</button>
+                <button id="admin-reset-movie" class="btn ghost" type="button">Clear</button>
+              </div>
+            </form>
+
+            <div id="admin-movies-list" class="list admin-only" hidden></div>
+
+            <h3 class="admin-section-title admin-only" hidden>Manage Showtimes</h3>
+            <form id="admin-showtime-form" class="admin-edit-form admin-only" hidden>
+              <input id="admin-showtime-id" type="hidden" />
+              <div class="admin-edit-grid admin-movie-grid">
+                <label>
+                  Movie
+                  <select id="admin-showtime-movie" required></select>
+                </label>
+                <label>
+                  Theater
+                  <select id="admin-showtime-theater" required></select>
+                </label>
+                <label>
+                  Screen Name
+                  <input id="admin-showtime-screen" type="text" required />
+                </label>
+                <label>
+                  Start Time
+                  <input id="admin-showtime-start" type="datetime-local" required />
+                </label>
+                <label>
+                  End Time
+                  <input id="admin-showtime-end" type="datetime-local" required />
+                </label>
+                <label>
+                  Base Price
+                  <input id="admin-showtime-price" type="number" min="1" required />
+                </label>
+              </div>
+              <div class="admin-form-actions">
+                <button id="admin-save-showtime" class="btn primary" type="submit">Save Showtime</button>
+                <button id="admin-reset-showtime" class="btn ghost" type="button">Clear</button>
+              </div>
+            </form>
+
+            <div id="admin-showtimes-list" class="list admin-only" hidden></div>
+
+            <h3 class="admin-section-title">Recent Activity</h3>
+            <div id="admin-activity" class="list"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+    <div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
+
+
+
+

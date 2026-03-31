@@ -1,0 +1,111 @@
+name: PR Fast Checks
+
+on:
+  pull_request:
+
+jobs:
+  syntax-and-compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -e
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find . -path "*/node_modules/*" -prune -o -name "*.js" -print0)
+
+      - name: Start stack (smoke)
+        run: docker compose up -d --build
+
+      - name: Wait for gateway health
+        shell: bash
+        run: |
+          set -e
+          for i in {1..24}; do
+            if curl -fsS http://localhost:4000/api/v1/health >/dev/null; then
+              echo "Gateway is healthy"
+              exit 0
+            fi
+            echo "Waiting for gateway... ($i/24)"
+            sleep 5
+          done
+          echo "Gateway did not become healthy in time"
+          docker compose logs
+          exit 1
+
+      - name: Seed movie catalog
+        run: docker compose exec -T movie-service npm run seed
+
+      - name: Capture showtime ID
+        id: showtime
+        shell: bash
+        run: |
+          set -e
+          SHOWTIME_ID=$(docker compose exec -T movie-service sh -c "node -e \"(async()=>{const m=require('mongoose');const {Showtime}=require('./src/models/Catalog');await m.connect(process.env.MONGO_URI,{dbName:process.env.MONGO_DB});const s=await Showtime.findOne().sort({createdAt:1});console.log(s?String(s._id):'');await m.disconnect();})().catch(async(e)=>{console.error(e);process.exit(1);});\"")
+          SHOWTIME_ID=$(echo "$SHOWTIME_ID" | tr -d '\r' | tail -n1)
+          if [ -z "$SHOWTIME_ID" ]; then
+            echo "No showtime found"
+            docker compose logs movie-service
+            exit 1
+          fi
+          echo "showtime_id=$SHOWTIME_ID" >> $GITHUB_OUTPUT
+          echo "Using showtime: $SHOWTIME_ID"
+
+      - name: Seed booking seat inventory
+        run: docker compose exec -T booking-service sh -c "SHOWTIME_ID=${{ steps.showtime.outputs.showtime_id }} npm run seed:seats"
+
+      - name: Run e2e smoke script (2 consecutive runs)
+        shell: pwsh
+        run: |
+          for ($i = 1; $i -le 2; $i++) {
+            Write-Host "=== PR FAST E2E RUN $i ==="
+            ./scripts/e2e-flow.ps1 `
+              -GatewayUrl http://localhost:4000 `
+              -PaymentServiceUrl http://localhost:5004 `
+              -LogPath "./e2e-pr-fast-run-$i.log"
+          }
+
+      - name: Validate E2E exit markers
+        shell: bash
+        run: |
+          set -e
+          for i in 1 2; do
+            log_file="e2e-pr-fast-run-$i.log"
+            if [ ! -f "$log_file" ]; then
+              echo "$log_file was not generated"
+              exit 1
+            fi
+            if ! grep -q "E2E_EXIT:0" "$log_file"; then
+              echo "Missing E2E_EXIT:0 marker in $log_file"
+              tail -n 120 "$log_file" || true
+              exit 1
+            fi
+            echo "$log_file validated"
+          done
+
+      - name: Collect diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p diagnostics
+          docker compose ps > diagnostics/compose-ps.txt
+          docker compose logs > diagnostics/compose-logs.txt
+          cp e2e-pr-fast-run-*.log diagnostics/ 2>/dev/null || true
+
+      - name: Upload diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-pr-fast-diagnostics
+          path: diagnostics
+          if-no-files-found: ignore
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
